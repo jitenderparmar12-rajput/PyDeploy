@@ -35,16 +35,26 @@ pipeline {
         }
 
         stage('Test Application') {
-            steps {
-                echo 'Testing Flask application...'
+         steps {
+        echo 'Testing Flask application...'
 
-                bat '"%DOCKER%" run -d --name pydeploy-test -p 5001:5000 %DOCKER_IMAGE%:%IMAGE_TAG%'
-                bat 'timeout /t 5 /nobreak'
-                bat 'curl http://localhost:5001/health'
-                bat '"%DOCKER%" stop pydeploy-test'
-                bat '"%DOCKER%" rm pydeploy-test'
-            }
+        bat '"%DOCKER%" run -d --name pydeploy-test -p 5001:5000 %DOCKER_IMAGE%:%IMAGE_TAG%'
+
+        powershell '''
+            Start-Sleep -Seconds 5
+        '''
+
+        retry(3) {
+            bat 'curl.exe --fail http://localhost:5001/health'
+            powershell '''
+                Start-Sleep -Seconds 2
+            '''
         }
+
+        bat '"%DOCKER%" stop pydeploy-test'
+        bat '"%DOCKER%" rm pydeploy-test'
+    }
+}
 
         stage('Deploy to Kubernetes') {
             steps {
