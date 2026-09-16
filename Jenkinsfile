@@ -2,11 +2,21 @@ pipeline {
     agent any
 
     environment {
+        DOCKER = 'C:\\Users\\JITENDER PARMAR\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
         DOCKER_IMAGE = 'jitender12/pydeploy'
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
+
+        stage('Check Docker') {
+            steps {
+                echo 'Checking Docker installation...'
+
+                bat '"%DOCKER%" --version'
+                bat '"%DOCKER%" ps'
+            }
+        }
 
         stage('Checkout') {
             steps {
@@ -19,8 +29,8 @@ pipeline {
             steps {
                 echo 'Building Docker image...'
 
-                bat 'docker build -t %DOCKER_IMAGE%:%IMAGE_TAG% .'
-                bat 'docker tag %DOCKER_IMAGE%:%IMAGE_TAG% %DOCKER_IMAGE%:latest'
+                bat '"%DOCKER%" build -t %DOCKER_IMAGE%:%IMAGE_TAG% .'
+                bat '"%DOCKER%" tag %DOCKER_IMAGE%:%IMAGE_TAG% %DOCKER_IMAGE%:latest'
             }
         }
 
@@ -28,11 +38,11 @@ pipeline {
             steps {
                 echo 'Testing Flask application...'
 
-                bat 'docker run -d --name pydeploy-test -p 5001:5000 %DOCKER_IMAGE%:%IMAGE_TAG%'
+                bat '"%DOCKER%" run -d --name pydeploy-test -p 5001:5000 %DOCKER_IMAGE%:%IMAGE_TAG%'
                 bat 'timeout /t 5 /nobreak'
                 bat 'curl http://localhost:5001/health'
-                bat 'docker stop pydeploy-test'
-                bat 'docker rm pydeploy-test'
+                bat '"%DOCKER%" stop pydeploy-test'
+                bat '"%DOCKER%" rm pydeploy-test'
             }
         }
 
@@ -67,7 +77,7 @@ pipeline {
                     )
                 ]) {
                     bat '''
-                        echo %DOCKER_PASSWORD% | docker login -u %DOCKER_USERNAME% --password-stdin
+                        echo %DOCKER_PASSWORD% | "%DOCKER%" login -u %DOCKER_USERNAME% --password-stdin
                     '''
                 }
             }
@@ -77,23 +87,23 @@ pipeline {
             steps {
                 echo 'Pushing Docker image to DockerHub...'
 
-                bat 'docker push %DOCKER_IMAGE%:%IMAGE_TAG%'
-                bat 'docker push %DOCKER_IMAGE%:latest'
+                bat '"%DOCKER%" push %DOCKER_IMAGE%:%IMAGE_TAG%'
+                bat '"%DOCKER%" push %DOCKER_IMAGE%:latest'
             }
         }
     }
 
     post {
+        always {
+            bat '"%DOCKER%" rm -f pydeploy-test 2>NUL || exit 0'
+        }
+
         success {
             echo 'Pipeline completed successfully!'
         }
 
         failure {
             echo 'Pipeline failed. Check the Jenkins console output.'
-        }
-
-        always {
-            bat 'docker rm -f pydeploy-test 2>NUL || exit 0'
         }
     }
 }
