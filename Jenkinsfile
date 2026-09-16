@@ -3,6 +3,8 @@ pipeline {
 
     environment {
         DOCKER = 'C:\\Users\\JITENDER PARMAR\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
+        KUBECTL = 'C:\\Users\\JITENDER PARMAR\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\kubectl.exe'
+
         DOCKER_IMAGE = 'jitender12/pydeploy'
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
@@ -15,6 +17,15 @@ pipeline {
 
                 bat '"%DOCKER%" --version'
                 bat '"%DOCKER%" ps'
+            }
+        }
+
+        stage('Check Kubernetes') {
+            steps {
+                echo 'Checking Kubernetes installation...'
+
+                bat '"%KUBECTL%" version --client'
+                bat '"%KUBECTL%" get nodes'
             }
         }
 
@@ -35,33 +46,34 @@ pipeline {
         }
 
         stage('Test Application') {
-         steps {
-        echo 'Testing Flask application...'
+            steps {
+                echo 'Testing Flask application...'
 
-        bat '"%DOCKER%" run -d --name pydeploy-test -p 5001:5000 %DOCKER_IMAGE%:%IMAGE_TAG%'
+                bat '"%DOCKER%" run -d --name pydeploy-test -p 5001:5000 %DOCKER_IMAGE%:%IMAGE_TAG%'
 
-        powershell '''
-            Start-Sleep -Seconds 5
-        '''
+                powershell '''
+                    Start-Sleep -Seconds 5
+                '''
 
-        retry(3) {
-            bat 'curl.exe --fail http://localhost:5001/health'
-            powershell '''
-                Start-Sleep -Seconds 2
-            '''
+                retry(3) {
+                    bat 'curl.exe --fail http://localhost:5001/health'
+
+                    powershell '''
+                        Start-Sleep -Seconds 2
+                    '''
+                }
+
+                bat '"%DOCKER%" stop pydeploy-test'
+                bat '"%DOCKER%" rm pydeploy-test'
+            }
         }
-
-        bat '"%DOCKER%" stop pydeploy-test'
-        bat '"%DOCKER%" rm pydeploy-test'
-    }
-}
 
         stage('Deploy to Kubernetes') {
             steps {
                 echo 'Deploying application to Kubernetes...'
 
-                bat 'kubectl apply -f deployment.yaml'
-                bat 'kubectl apply -f service.yaml'
+                bat '"%KUBECTL%" apply -f deployment.yaml'
+                bat '"%KUBECTL%" apply -f service.yaml'
             }
         }
 
@@ -69,9 +81,9 @@ pipeline {
             steps {
                 echo 'Verifying Kubernetes deployment...'
 
-                bat 'kubectl get deployments'
-                bat 'kubectl get pods'
-                bat 'kubectl get services'
+                bat '"%KUBECTL%" get deployments'
+                bat '"%KUBECTL%" get pods'
+                bat '"%KUBECTL%" get services'
             }
         }
 
