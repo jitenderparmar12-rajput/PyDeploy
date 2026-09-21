@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: python-devops-app
+  name: pydeploy
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: python-devops-app
+      app: pydeploy
   template:
     metadata:
       labels:
-        app: python-devops-app
+        app: pydeploy
     spec:
       containers:
-        - name: python-app
-          image: python-devops-app:latest
-          imagePullPolicy: Never
+        - name: pydeploy
+          image: jitender12/pydeploy:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
